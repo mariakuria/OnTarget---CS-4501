@@ -1,11 +1,16 @@
 import datetime as dt
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 
 from app import planner
 from app.models import DayUpdate, Plan, PlanRequest, TaskUpdate
 from app.problems import PROBLEMS, Problem, ProblemSummary
 from app.store import InMemoryStore
+
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 def create_app(llm=None, store=None, today_fn=dt.date.today) -> FastAPI:
@@ -62,5 +67,8 @@ def create_app(llm=None, store=None, today_fn=dt.date.today) -> FastAPI:
         if problem is None:
             raise HTTPException(status_code=404, detail="Problem not found")
         return problem
+
+    # The web page. Mounted last so the API routes above always win.
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
 
     return app

@@ -22,3 +22,5 @@ One line per red/green run, written by scripts/tdd.sh.
 - Issue #2 green: 13 passed in 0.19s
 - Issue #3 red: 6 failed, 1 passed in 0.17s
 - Issue #3 green: 7 passed in 0.14s
+- Issue #9 red: 3 failed, 4 passed in 0.18s
+- Issue #9 green: 7 passed in 0.15s
