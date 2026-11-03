@@ -26,6 +26,15 @@ def test_last_day_is_day_before_interview(new_plan):
     assert new_plan["days"][-1]["date"] == "2026-11-08"
 
 
+@pytest.mark.manual
+def test_one_day_plan_is_the_day_before_the_interview(client):
+    response = post(client, interview_date="2026-11-03")
+    assert response.status_code == 201
+    body = response.json()
+    assert len(body["days"]) == 1
+    assert body["days"][0]["date"] == "2026-11-02"
+
+
 def test_day_numbers_start_at_one(new_plan):
     assert [d["number"] for d in new_plan["days"]] == list(range(1, 8))
 

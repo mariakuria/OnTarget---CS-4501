@@ -37,6 +37,30 @@ def test_plan_survives_an_app_restart(make_client, tmp_path):
     assert reloaded.json() == created
 
 
+@pytest.mark.manual
+def test_task_and_skip_updates_survive_an_app_restart(make_client, tmp_path):
+    from app.store import SqliteStore
+
+    db = str(tmp_path / "plans.db")
+    first_app = make_client(store=SqliteStore(db))
+    created = create(first_app)
+    task = created["days"][0]["tasks"][0]
+    completed = first_app.patch(
+        f"/plans/{created['id']}/tasks/{task['id']}", json={"done": True}
+    )
+    assert completed.status_code == 200
+    skipped = first_app.patch(
+        f"/plans/{created['id']}/days/2", json={"skipped": True}
+    )
+    assert skipped.status_code == 200
+    expected = skipped.json()
+
+    restarted_app = make_client(store=SqliteStore(db))
+    response = restarted_app.get(f"/plans/{created['id']}")
+    assert response.status_code == 200
+    assert response.json() == expected
+
+
 def test_sqlite_store_round_trip_keeps_dates_and_tasks(tmp_path):
     from app import planner
     from app.store import SqliteStore

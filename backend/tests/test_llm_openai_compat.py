@@ -18,6 +18,7 @@ def reply(content):
     return {"choices": [{"message": {"role": "assistant", "content": content}}]}
 
 
+@pytest.mark.manual
 def test_sends_a_chat_completion_request_and_returns_the_text():
     seen = {}
 
@@ -33,6 +34,7 @@ def test_sends_a_chat_completion_request_and_returns_the_text():
     assert seen["auth"] == "Bearer k1"
     assert b'"model":"m1"' in seen["body"].replace(b" ", b"")
     assert b"my prompt" in seen["body"]
+    assert b"k1" not in seen["body"]
 
 
 def test_trailing_slash_in_the_base_url_is_fine():
@@ -111,3 +113,20 @@ def test_a_plan_can_be_written_through_the_openai_compatible_client(make_client)
     body = make_client(llm=llm).post("/plans", json={"company": "Amazon", "interview_date": "2026-11-09"}).json()
     assert body["source"] == "llm"
     assert len(body["days"]) == 7
+
+
+@pytest.mark.manual
+def test_provider_outage_uses_the_fallback_after_three_requests(make_client):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(503, json={"error": "temporarily unavailable"})
+
+    llm = make_llm(handler, base_url="https://e.test/v1", model="m")
+    response = make_client(llm=llm).post(
+        "/plans", json={"company": "Amazon", "interview_date": "2026-11-09"}
+    )
+    assert response.status_code == 201
+    assert response.json()["source"] == "fallback"
+    assert len(requests) == 3

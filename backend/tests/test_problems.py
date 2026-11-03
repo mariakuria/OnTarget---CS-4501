@@ -42,6 +42,22 @@ def test_every_problem_is_complete(client, problem_id):
     assert all(code.strip() for code in p["starter_code"].values())
 
 
+@pytest.mark.manual
+def test_every_problem_detail_response_has_the_documented_fields(client):
+    for problem_id in IDS:
+        response = client.get(f"/problems/{problem_id}")
+        assert response.status_code == 200
+        problem = response.json()
+        assert problem["title"]
+        assert problem["difficulty"] in ("Easy", "Medium", "Hard")
+        assert problem["topics"]
+        assert problem["description"]
+        assert problem["examples"]
+        assert problem["constraints"]
+        assert all(example["input"] and example["output"] for example in problem["examples"])
+        assert sorted(problem["starter_code"]) == sorted(LANGS)
+
+
 def test_starter_code_matches_each_language(client):
     code = client.get("/problems/two-sum").json()["starter_code"]
     assert "def twoSum(self, nums: list[int], target: int)" in code["Python"]
