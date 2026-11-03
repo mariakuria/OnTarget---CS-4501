@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Creates the GitHub repo, labels, milestone and the 8 issues, then pushes the code.
+# Creates the GitHub repo, labels, milestone and the 9 issues, then pushes the code.
 # Run on your own computer after `gh auth login`.   Usage: scripts/setup_github.sh [repo-name]
 # The issues are created BEFORE the push so the "Closes #N" commit messages close them.
 set -euo pipefail
@@ -26,6 +26,7 @@ make_issue 5 'Save a plan and load it again later' "backend,feature" docs/issues
 make_issue 6 'Mark tasks done and see my progress' "backend,feature" docs/issues/06-mark-task-done.md
 make_issue 7 'Skip a day without hurting my progress' "backend,feature" docs/issues/07-skip-day.md
 make_issue 8 'Open a coding problem with starter code' "backend,feature" docs/issues/08-open-problem.md
+make_issue 9 'Use OnTarget in a web page served by the backend' "frontend,feature" docs/issues/09-web-page.md
 git push -u origin main
 echo "Done. Issues closed by the pushed commits:"
 gh issue list --state all --milestone Alpha

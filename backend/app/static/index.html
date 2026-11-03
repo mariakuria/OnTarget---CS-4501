@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OnTarget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: one top bar, then one of four views (setup, building, plan, workspace).
+   Signature element: the runway, a row of day nodes that fills in and ends at a gold bullseye (interview day).
+   Palette comes from an archery target face: cool paper, ink, a working blue, a gold centre, red only for skips and errors. */
+:root{
+  --paper:#EFF3F7; --surface:#FFFFFF; --ink:#0E1621; --muted:#566478; --line:#DCE3EB; --line-strong:#B9C4D1;
+  --blue:#1F5FD1; --blue-deep:#1749A6; --on-blue:#FFFFFF; --gold:#F2B300; --red:#D4344A;
+  --tint:#E4EDFB; --gold-tint:#FFF4D1; --red-tint:#FBE6E9;
+  --ed:#0C121A; --ed-bar:#121B26; --ed-line:#1F2B3A; --ed-ink:#E4EBF3; --ed-dim:#7E8EA2;
+  --tk-kw:#8FB3FF; --tk-str:#7FD6A6; --tk-num:#F5C451; --tk-com:#62748A; --tk-ty:#C9A7FF;
+  --display:'Bricolage Grotesque','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --body:'Instrument Sans','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --code:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0A1017; --surface:#121A25; --ink:#E8EEF5; --muted:#93A2B5; --line:#223041; --line-strong:#374A60;
+  --blue:#5C9DFF; --blue-deep:#79AEFF; --on-blue:#07101C; --gold:#FFC62E; --red:#FF7186;
+  --tint:#172A47; --gold-tint:#3A2F0E; --red-tint:#3B1A22; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0A1017; --surface:#121A25; --ink:#E8EEF5; --muted:#93A2B5; --line:#223041; --line-strong:#374A60;
+  --blue:#5C9DFF; --blue-deep:#79AEFF; --on-blue:#07101C; --gold:#FFC62E; --red:#FF7186;
+  --tint:#172A47; --gold-tint:#3A2F0E; --red-tint:#3B1A22; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;
+  padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));
+  padding-bottom:64px;min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3,p{margin:0}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px;border-radius:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+[hidden]{display:none!important}
+.wrap{max-width:1120px;margin:0 auto}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0;max-width:1120px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.02em;background:none;border:0;padding:0}
+.brand svg{width:30px;height:30px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;border:1px solid var(--line-strong);background:var(--surface);padding:9px 16px;font-weight:600;font-size:15px;transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:var(--on-blue);padding:14px 24px;font-size:17px}
+.btn.primary:hover{background:var(--blue-deep);border-color:var(--blue-deep)}
+.btn.small{padding:6px 12px;font-size:14px}
+.link{background:none;border:0;padding:4px 2px;color:var(--muted);font-size:14px;text-decoration:underline;text-underline-offset:3px}
+.link:hover{color:var(--ink)}
+
+/* setup */
+.setup{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:48px 64px;align-items:start;padding-top:24px}
+.setup h1{font-family:var(--display);font-weight:780;font-size:clamp(2.2rem,4.6vw,3.7rem);line-height:1.02;letter-spacing:-.03em;font-variation-settings:"wdth" 88;text-wrap:balance}
+.lede{margin-top:18px;color:var(--muted);font-size:18px;max-width:34em}
+.form{margin-top:32px;display:flex;flex-direction:column;gap:22px;max-width:520px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-weight:600;font-size:15px}
+.field input[type=text],.field input[type=date]{width:100%;height:54px;padding:0 16px;border-radius:12px;border:1.5px solid var(--line-strong);background:var(--surface);font-size:17px}
+.field input:focus-visible{outline:3px solid color-mix(in srgb,var(--blue) 40%,transparent);outline-offset:0;border-color:var(--blue)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line-strong);background:var(--surface);border-radius:999px;padding:6px 14px;font-size:14px;font-weight:500}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.err{background:var(--red-tint);color:var(--red);border-radius:10px;padding:10px 14px;font-size:15px;font-weight:500}
+.resume{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:28px;padding:16px 18px;border:1px dashed var(--line-strong);border-radius:14px;max-width:520px}
+.resume b{font-weight:600}
+.resume span{color:var(--muted);font-size:15px;display:block}
+.preview{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:22px;padding:36px 28px 28px;overflow:hidden}
+.preview-rings{position:absolute;right:-120px;bottom:-120px;width:320px;height:320px;opacity:.55;pointer-events:none}
+.preview h2{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.01em;position:relative}
+.preview p{color:var(--muted);margin-top:6px;position:relative}
+.preview .runway-wrap{margin-top:34px;position:relative}
+.preview ul{list-style:none;padding:0;margin:30px 0 0;display:flex;flex-direction:column;gap:12px;position:relative}
+.preview li{display:flex;gap:12px;align-items:flex-start;font-size:15px}
+.preview li svg{flex:none;width:20px;height:20px;margin-top:2px;color:var(--blue)}
+
+/* runway */
+.runway-wrap{overflow-x:auto;padding:8px 4px 6px;margin:0 -4px}
+.runway{display:flex;align-items:flex-start;min-width:max-content;width:100%}
+.rnode{display:flex;flex-direction:column;align-items:center;gap:7px;flex:none;width:28px}
+.dot{width:24px;height:24px;border-radius:50%;border:2px solid var(--line-strong);background:var(--surface);padding:0;position:relative;display:block;transition:background .3s,border-color .3s,box-shadow .3s}
+button.dot:hover{border-color:var(--blue)}
+.rnode.done .dot{background:var(--blue);border-color:var(--blue)}
+.rnode.done .dot::after{content:"";position:absolute;left:6.5px;top:2.5px;width:6px;height:11px;border:solid var(--on-blue);border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.rnode.part .dot{border-color:var(--blue);background:conic-gradient(var(--blue) calc(var(--p)*1%),var(--surface) 0)}
+.rnode.skip .dot{border-style:dashed;background:transparent;opacity:.55}
+.rnode.today .dot{box-shadow:0 0 0 5px color-mix(in srgb,var(--blue) 22%,transparent)}
+.rlabel{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1}
+.rnode.today .rlabel{color:var(--ink);font-weight:700}
+.rseg{flex:1;min-width:10px;height:3px;border-radius:2px;margin-top:10.5px;background:var(--line-strong);position:relative;overflow:hidden}
+.rseg::after{content:"";position:absolute;inset:0;background:var(--blue);transform:scaleX(0);transform-origin:left;transition:transform .45s}
+.rseg.fill::after{transform:scaleX(1)}
+.rend{flex:none;width:44px;display:flex;flex-direction:column;align-items:center;gap:3px;margin-top:-9px}
+.rend svg{width:42px;height:42px}
+.rend .rlabel{color:var(--ink);font-weight:700}
+.runway.enter .rnode,.runway.enter .rend{animation:pop .5s cubic-bezier(.2,.9,.3,1.3) both;animation-delay:calc(var(--i)*70ms)}
+.runway.enter .rseg{animation:fade .3s both;animation-delay:calc(var(--i)*70ms + 40ms)}
+@keyframes pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* building */
+.building{display:flex;flex-direction:column;align-items:center;text-align:center;padding:72px 0 40px;gap:8px}
+.building svg{width:128px;height:128px;margin-bottom:18px}
+.building .ring{transform-origin:50% 50%;animation:tighten 2.4s ease-in-out infinite;animation-delay:calc(var(--k)*180ms)}
+@keyframes tighten{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.82);opacity:.55}}
+.building h1{font-family:var(--display);font-size:clamp(1.7rem,3.4vw,2.4rem);font-weight:760;letter-spacing:-.02em;text-wrap:balance}
+.building ul{list-style:none;margin:18px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;color:var(--muted);text-align:left}
+.building li{display:flex;gap:10px;align-items:center;opacity:.35;transition:opacity .3s}
+.building li.on{opacity:1;color:var(--ink)}
+.building li i{width:8px;height:8px;border-radius:50%;background:var(--blue);flex:none}
+
+/* plan */
+.plan-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;padding-top:12px}
+.plan-head h1{font-family:var(--display);font-weight:780;font-size:clamp(2.2rem,5vw,3.6rem);line-height:1;letter-spacing:-.03em;font-variation-settings:"wdth" 88}
+.plan-head .when{color:var(--muted);margin-top:10px;font-size:17px}
+.plan-head .when b{color:var(--ink);font-weight:600}
+.stats{display:flex;align-items:center;gap:18px}
+.ring-wrap{position:relative;width:72px;height:72px}
+.ring-wrap svg{width:72px;height:72px;transform:rotate(-90deg)}
+.ring-wrap .trk{stroke:var(--line);fill:none}
+.ring-wrap .val{stroke:var(--blue);fill:none;stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.3,.8,.3,1)}
+.ring-wrap b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:760;font-size:20px;font-variant-numeric:tabular-nums}
+.stats .txt{display:flex;flex-direction:column;gap:2px}
+.stats .txt b{font-family:var(--display);font-size:20px;font-weight:700}
+.stats .txt span{color:var(--muted);font-size:15px}
+.source{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:6px 14px 6px 10px;border-radius:999px;background:var(--tint);color:var(--blue-deep);font-size:14px;font-weight:600}
+.source svg{width:18px;height:18px}
+.notice{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:20px;padding:12px 16px;border-radius:12px;background:var(--gold-tint);font-size:15px}
+.plan .runway-wrap{margin-top:26px;padding-bottom:10px}
+.plan-body{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:48px;margin-top:20px;align-items:start}
+.day{display:grid;grid-template-columns:112px minmax(0,1fr);gap:0 28px;padding:24px 14px 24px 0;border-top:1px solid var(--line);scroll-margin-top:16px}
+.day.today{background:linear-gradient(90deg,var(--gold-tint),transparent 70%);margin-left:-14px;padding-left:14px;border-radius:12px 0 0 12px}
+.dayno{font-family:var(--display);font-weight:760;font-size:22px;letter-spacing:-.01em}
+.daydate{color:var(--muted);font-size:15px;margin-top:2px}
+.tag{display:inline-block;margin-top:8px;font-size:12.5px;font-weight:600;padding:2px 9px;border-radius:999px}
+.tag.today{background:var(--gold);color:#241A00}
+.tag.done{background:var(--tint);color:var(--blue-deep)}
+.tag.skip{background:var(--red-tint);color:var(--red)}
+.daytop{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+.daytop h2{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:-.01em;text-wrap:balance}
+.day.skipped .daytop h2{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line-strong)}
+.day.skipped .tasks{display:none}
+.tasks{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column}
+.task{position:relative;display:flex;align-items:flex-start;gap:10px;padding:2px 0}
+.cb{position:absolute;opacity:0;width:1px;height:1px}
+.trow{display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0;padding:9px 8px;margin:0 -8px;border-radius:10px;cursor:pointer}
+.trow:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.box{flex:none;width:22px;height:22px;border-radius:7px;border:2px solid var(--line-strong);background:var(--surface);position:relative;margin-top:1px;transition:background .15s,border-color .15s}
+.cb:checked + .trow .box{background:var(--blue);border-color:var(--blue)}
+.cb:checked + .trow .box::after{content:"";position:absolute;left:6px;top:1.5px;width:6px;height:11px;border:solid var(--on-blue);border-width:0 2.5px 2.5px 0;transform:rotate(45deg);animation:tick .25s ease-out}
+@keyframes tick{from{transform:rotate(45deg) scale(.3);opacity:0}to{transform:rotate(45deg) scale(1);opacity:1}}
+.cb:focus-visible + .trow .box{outline:3px solid var(--blue);outline-offset:2px}
+.ticon{flex:none;width:22px;height:22px;color:var(--muted);margin-top:1px}
+.ticon svg{width:100%;height:100%}
+.ttext{min-width:0;overflow-wrap:anywhere}
+.cb:checked + .trow .ttext{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line-strong)}
+.open{flex:none;align-self:center;border:1.5px solid var(--blue);color:var(--blue-deep);background:transparent;border-radius:9px;padding:5px 12px;font-size:14px;font-weight:600;white-space:nowrap}
+.open:hover{background:var(--blue);color:var(--on-blue)}
+.rail{position:sticky;top:16px;display:flex;flex-direction:column;gap:16px;padding-top:24px;border-top:1px solid var(--line)}
+.upnext{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px}
+.upnext h2{font-family:var(--display);font-size:18px;font-weight:700}
+.upnext .item{display:flex;gap:12px;margin:14px 0 18px}
+.upnext .item .ticon{color:var(--blue)}
+.upnext .done-msg{margin-top:10px;color:var(--muted)}
+.counts{display:flex;justify-content:space-between;color:var(--muted);font-size:15px;padding:0 4px}
+.counts b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* workspace */
+.workbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.crumb{color:var(--muted);font-size:15px}
+.split{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:24px;align-items:start}
+.prob{padding:4px 4px 40px;min-width:0}
+.prob h1{font-family:var(--display);font-weight:780;font-size:clamp(1.8rem,3vw,2.5rem);letter-spacing:-.025em;line-height:1.05}
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 20px}
+.pill{font-size:13px;font-weight:600;padding:3px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.pill.Easy{background:var(--tint);color:var(--blue-deep);border-color:transparent}
+.pill.Medium{background:var(--gold-tint);color:var(--ink);border-color:transparent}
+.pill.Hard{background:var(--red-tint);color:var(--red);border-color:transparent}
+.prob p{margin-bottom:12px;max-width:60ch}
+.prob h3{font-family:var(--display);font-size:17px;font-weight:700;margin:26px 0 10px}
+.ex{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;overflow-x:auto}
+.ex pre{margin:0;font-family:var(--code);font-size:13px;line-height:1.6;white-space:pre}
+.ex span{color:var(--muted)}
+.cons{margin:0;padding-left:20px;color:var(--muted);font-family:var(--code);font-size:13px;display:flex;flex-direction:column;gap:4px}
+.ide{background:var(--ed);border-radius:16px;overflow:hidden;border:1px solid var(--ed-line);color:var(--ed-ink);position:sticky;top:16px}
+.tb{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px;background:var(--ed-bar);border-bottom:1px solid var(--ed-line)}
+.tb label{font-size:13px;color:var(--ed-dim);font-weight:500}
+.tb select{background:var(--ed);border:1px solid var(--ed-line);border-radius:8px;color:var(--ed-ink);padding:6px 10px;font-size:14px;height:34px}
+.tb .sp{flex:1}
+.tb button{height:34px;border-radius:8px;border:1px solid var(--ed-line);background:transparent;color:var(--ed-dim);padding:0 12px;font-size:14px;font-weight:500}
+.tb button:hover{color:var(--ed-ink);border-color:var(--ed-dim)}
+.tb .run{background:#1C2938;color:var(--ed-ink);border-color:#1C2938;font-weight:600}
+.tb .run:hover{background:#25364A}
+.tb .submit{background:var(--blue);border-color:var(--blue);color:var(--on-blue);font-weight:600}
+.tb .submit:hover{background:var(--blue-deep);color:var(--on-blue)}
+.editor{display:flex;height:360px;font-family:var(--code);font-size:13.5px;line-height:21px}
+.gut{margin:0;padding:12px 10px 12px 12px;min-width:44px;text-align:right;color:var(--ed-dim);user-select:none;overflow:hidden;border-right:1px solid var(--ed-line);font:inherit;line-height:inherit}
+.codewrap{position:relative;flex:1;min-width:0}
+.codewrap pre,.codewrap textarea{margin:0;padding:12px 14px;border:0;font:inherit;line-height:inherit;white-space:pre;tab-size:4;position:absolute;inset:0;width:100%;height:100%;overflow:auto;letter-spacing:0}
+.codewrap pre{pointer-events:none;overflow:hidden;color:var(--ed-ink)}
+.codewrap textarea{background:transparent;color:transparent;caret-color:#fff;resize:none;outline:none;-webkit-text-fill-color:transparent}
+.codewrap textarea::selection{background:rgba(92,157,255,.35);-webkit-text-fill-color:transparent}
+.tk-kw{color:var(--tk-kw)}.tk-str{color:var(--tk-str)}.tk-num{color:var(--tk-num)}.tk-com{color:var(--tk-com);font-style:italic}.tk-ty{color:var(--tk-ty)}
+.console{border-top:1px solid var(--ed-line);padding:12px 16px 16px;min-height:150px;font-size:14px}
+.console .h{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--ed-dim);margin-bottom:10px}
+.console .rows{display:flex;flex-direction:column;gap:6px;font-family:var(--code);font-size:13px}
+.console .ok{color:var(--tk-str);font-weight:500}
+.console .accepted{font-family:var(--display);font-size:24px;font-weight:780;color:var(--tk-str);margin-bottom:6px}
+.console .dim{color:var(--ed-dim)}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:12px;font-size:15px;font-weight:500;z-index:20;max-width:min(92vw,520px)}
+
+@media (max-width:900px){
+  .setup{grid-template-columns:minmax(0,1fr);gap:36px}
+  .plan-body{grid-template-columns:minmax(0,1fr);gap:8px}
+  .rail{position:static;order:-1;border-top:0;padding-top:0}
+  .split{grid-template-columns:minmax(0,1fr)}
+  .ide{position:static}
+}
+@media (max-width:560px){
+  .day{grid-template-columns:minmax(0,1fr);gap:8px}
+  .day.today{margin-left:-10px;padding-left:10px}
+  .dayside{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .tag{margin-top:0}
+  .open{align-self:flex-start;margin-left:42px;margin-top:0;margin-bottom:6px}
+  .task{flex-wrap:wrap}
+  .trow{flex:1 1 100%}
+  .preview{padding:28px 20px 22px}
+  .rnode{width:24px}.dot{width:20px;height:20px}.rnode.done .dot::after{left:5px;top:1.5px;width:5px;height:9px}
+  .rseg{margin-top:8.5px;min-width:6px}
+  .rend{margin-top:-11px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <button class="brand" id="home" type="button" aria-label="OnTarget home">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="16" cy="16" r="8.5" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="16" cy="16" r="3.6" fill="var(--gold)"/></svg>
+    OnTarget
+  </button>
+  <button class="btn" id="newplan" type="button" hidden>New plan</button>
+</header>
+<main class="wrap" id="view"></main>
+<div class="toast" id="toast" role="status" hidden></div>
+<noscript><p>OnTarget needs JavaScript to run.</p></noscript>
+
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k) { try { return localStorage.getItem(k) } catch (e) { return null } },
+  set(k, v) { try { localStorage.setItem(k, v) } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k) } catch (e) {} }
+};
+const parseISO = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d) };
+const toISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const startOfToday = () => { const t = new Date(); t.setHours(0, 0, 0, 0); return t };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x };
+const daysBetween = (a, b) => Math.round((b - a) / 864e5);
+const fmt = (d, o) => d.toLocaleDateString('en-US', o);
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- api ---------- */
+class ApiError extends Error {
+  constructor(status, detail) { super('api'); this.status = status; this.detail = detail }
+}
+async function api(path, opts = {}) {
+  let res;
+  try { res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts }) }
+  catch (e) { throw new ApiError(0, null) }
+  let body = null;
+  try { body = await res.json() } catch (e) {}
+  if (!res.ok) throw new ApiError(res.status, body && body.detail !== undefined ? body.detail : null);
+  return body;
+}
+function friendly(err) {
+  if (err.status === 0) return "Can't reach the OnTarget server. Check that it is running, then try again.";
+  const d = err.detail;
+  const msg = typeof d === 'string' ? d : (Array.isArray(d) && d[0] ? (d[0].msg || '') : '');
+  if (/future/.test(msg)) return 'Pick an interview date after today.';
+  if (/not allowed/.test(msg)) return "Company names can use letters, numbers, spaces and & . , ' + - ( ) ! / only.";
+  if (/blank/.test(msg)) return 'Enter a company name.';
+  if (/at most/.test(msg)) return 'Company names can be up to 80 characters.';
+  if (err.status === 404) return 'That item no longer exists.';
+  if (err.status === 422) return 'Check the company and the date, then try again.';
+  return 'The server hit a problem. Try again in a moment.';
+}
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true }, 4500);
+}
+
+/* ---------- icons ---------- */
+const svg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const ICON = {
+  coding: svg('<path d="M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/>'),
+  behavioral: svg('<path d="M4 5h16v11H10l-5 4v-4H4z"/>'),
+  company: svg('<path d="M5 20V5h9v15M14 9h5v11M8 8.5h3M8 12h3M8 15.5h3M3 20h18"/>'),
+  design: svg('<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M4 10h16M10 10v10"/>'),
+  mock: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>'),
+  review: svg('<path d="M4.5 12.5l4.5 4.5 10.5-10.5"/>'),
+  rest: svg('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5z"/>'),
+  sparkle: svg('<path d="M12 3l2.2 6.3L20.5 11.5l-6.3 2.2L12 20l-2.2-6.3L3.5 11.5l6.3-2.2z"/>'),
+  list: svg('<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>'),
+  code: svg('<path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/>'),
+  flag: svg('<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>')
+};
+const TYPE_LABEL = { coding: 'Coding', behavioral: 'Behavioral', company: 'Company research', design: 'Design', mock: 'Mock interview', review: 'Review', rest: 'Rest' };
+const BULLSEYE = (cls = '') => `<svg class="${cls}" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/><circle cx="22" cy="22" r="14" fill="none" stroke="var(--ink)" stroke-width="2"/><circle cx="22" cy="22" r="8" fill="none" stroke="var(--ink)" stroke-width="2"/><circle cx="22" cy="22" r="4.2" fill="var(--gold)"/></svg>`;
+
+/* ---------- state ---------- */
+const state = { plan: null, view: 'setup', work: null, codes: {}, lang: 'Python', draft: { company: 'Amazon', date: null } };
+const view = $('#view');
+
+function show(name) {
+  state.view = name;
+  $('#newplan').hidden = !(name === 'plan' || name === 'work');
+  window.scrollTo(0, 0);
+}
+
+/* ---------- plan math ---------- */
+function progressOf(plan) {
+  const tasks = plan.days.filter(d => !d.skipped).flatMap(d => d.tasks);
+  const done = tasks.filter(t => t.done).length;
+  return { done, total: tasks.length, percent: tasks.length ? Math.round(100 * done / tasks.length) : 0 };
+}
+function dayState(d) {
+  if (d.skipped) return { s: 'skip', p: 0 };
+  const done = d.tasks.filter(t => t.done).length;
+  if (done === d.tasks.length) return { s: 'done', p: 100 };
+  if (done > 0) return { s: 'part', p: Math.round(100 * done / d.tasks.length) };
+  return { s: 'todo', p: 0 };
+}
+
+/* ---------- runway ---------- */
+function runwayHTML(nodes, endLabel, interactive) {
+  let h = '<div class="runway">';
+  nodes.forEach((n, i) => {
+    const tag = interactive ? 'button type="button"' : 'span';
+    const close = interactive ? 'button' : 'span';
+    h += `<div class="rnode ${n.s}${n.today ? ' today' : ''}" style="--i:${i};--p:${n.p}" data-node="${i}">
+      <${tag} class="dot" ${interactive ? `data-day="${i + 1}" aria-label="${esc(n.label)}" title="${esc(n.label)}"` : ''}></${close}>
+      <span class="rlabel">${n.date.getDate()}</span></div>`;
+    h += `<div class="rseg${n.fill ? ' fill' : ''}" style="--i:${i}" aria-hidden="true"></div>`;
+  });
+  h += `<div class="rend" style="--i:${nodes.length}">${BULLSEYE()}<span class="rlabel">${esc(endLabel)}</span></div></div>`;
+  return h;
+}
+function planNodes(plan) {
+  const t = +startOfToday();
+  const states = plan.days.map(dayState);
+  return plan.days.map((d, i) => {
+    const date = parseISO(d.date);
+    const passed = states[i].s === 'done' || states[i].s === 'skip';
+    return { ...states[i], date, today: +date === t, fill: passed,
+      label: `Day ${d.number}, ${fmt(date, { weekday: 'long', month: 'long', day: 'numeric' })}: ${d.title}` };
+  });
+}
+
+/* ---------- setup view ---------- */
+const COMPANIES = ['Amazon', 'Google', 'Meta', 'Microsoft', 'Apple', 'Netflix', 'Stripe', 'Nvidia'];
+
+function renderSetup() {
+  show('setup');
+  const tomorrow = addDays(startOfToday(), 1);
+  if (!state.draft.date) state.draft.date = toISO(addDays(startOfToday(), 8));
+  view.innerHTML = `
+  <section class="setup">
+    <div>
+      <h1>Interview coming up? Get a plan for every day until it.</h1>
+      <p class="lede">Enter the company and the date. An AI writes tasks for how that company interviews, with practice problems you can open and solve right here.</p>
+      <form class="form" id="form" novalidate>
+        <div class="field">
+          <label for="company">Company</label>
+          <input id="company" type="text" autocomplete="off" maxlength="120" placeholder="For example, Stripe" value="${esc(state.draft.company)}">
+          <div class="chips" id="chips">${COMPANIES.map(c => `<button type="button" class="chip" aria-pressed="false">${c}</button>`).join('')}</div>
+        </div>
+        <div class="field">
+          <label for="date">Interview date</label>
+          <input id="date" type="date" min="${toISO(tomorrow)}" value="${state.draft.date}">
+          <div class="chips"><button type="button" class="chip" data-add="3">In 3 days</button><button type="button" class="chip" data-add="7">In 1 week</button><button type="button" class="chip" data-add="14">In 2 weeks</button></div>
+        </div>
+        <p class="err" id="err" role="alert" hidden></p>
+        <div><button class="btn primary" type="submit">Build my plan</button></div>
+      </form>
+      <div class="resume" id="resume" hidden></div>
+    </div>
+    <aside class="preview" aria-label="Preview of your runway">
+      <svg class="preview-rings" viewBox="0 0 200 200" aria-hidden="true"><g fill="none" stroke="var(--line-strong)" stroke-width="1"><circle cx="100" cy="100" r="96"/><circle cx="100" cy="100" r="74"/><circle cx="100" cy="100" r="52"/><circle cx="100" cy="100" r="30"/></g><circle cx="100" cy="100" r="12" fill="var(--gold)"/></svg>
+      <h2 id="pv-title"></h2>
+      <p id="pv-sub"></p>
+      <div class="runway-wrap" id="pv-run"></div>
+      <ul>
+        <li>${ICON.company}<span>Research on how the company interviews</span></li>
+        <li>${ICON.code}<span>Practice problems with an editor, one click from the plan</span></li>
+        <li>${ICON.flag}<span>Behavioral stories, a mock interview and a rest day at the end</span></li>
+      </ul>
+    </aside>
+  </section>`;
+  const company = $('#company'), date = $('#date');
+  const syncChips = () => $$('#chips .chip').forEach(c => c.setAttribute('aria-pressed', String(c.textContent.toLowerCase() === company.value.trim().toLowerCase())));
+  const syncPreview = () => {
+    state.draft.company = company.value; state.draft.date = date.value;
+    const n = daysBetween(startOfToday(), parseISO(date.value || toISO(tomorrow)));
+    const count = Math.max(0, Math.min(14, n));
+    const iv = date.value ? parseISO(date.value) : tomorrow;
+    $('#pv-title').textContent = n > 0 ? `${plural(count, 'day')} of prep` : 'Pick a date after today';
+    $('#pv-sub').textContent = n > 14 ? `Your plan covers the last 14 days before ${fmt(iv, { month: 'long', day: 'numeric' })}.` : (n > 0 ? `Ending the day before your interview on ${fmt(iv, { month: 'long', day: 'numeric' })}.` : '');
+    const first = addDays(iv, -count);
+    const nodes = Array.from({ length: count }, (_, i) => ({ s: 'todo', p: 0, date: addDays(first, i), today: i === 0, fill: false }));
+    $('#pv-run').innerHTML = count ? runwayHTML(nodes, fmt(iv, { month: 'short', day: 'numeric' }).replace(/^\w+ /, ''), false) : '';
+  };
+  company.addEventListener('input', () => { syncChips(); state.draft.company = company.value });
+  $('#chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { company.value = b.textContent; syncChips(); company.focus() } });
+  date.addEventListener('input', syncPreview);
+  $$('[data-add]').forEach(b => b.addEventListener('click', () => { date.value = toISO(addDays(startOfToday(), +b.dataset.add)); syncPreview() }));
+  $('#form').addEventListener('submit', e => { e.preventDefault(); submitSetup() });
+  syncChips(); syncPreview();
+  loadResume();
+}
+function showErr(msg) { const e = $('#err'); if (!e) return; e.textContent = msg; e.hidden = !msg }
+
+async function submitSetup() {
+  const company = $('#company').value.trim(), date = $('#date').value;
+  if (!company) { showErr('Enter a company name.'); $('#company').focus(); return }
+  if (!date || parseISO(date) <= startOfToday()) { showErr('Pick an interview date after today.'); return }
+  showErr('');
+  await buildPlan(company, date);
+}
+
+async function loadResume() {
+  const id = store.get('ontarget.plan');
+  if (!id) return;
+  try {
+    const plan = await api(`/plans/${encodeURIComponent(id)}`);
+    const box = $('#resume'); if (!box) return;
+    const p = progressOf(plan);
+    box.hidden = false;
+    box.innerHTML = `<div><b>Pick up where you left off</b><span>${esc(plan.company)} plan, ${p.done} of ${p.total} tasks done</span></div><button class="btn small" type="button" id="resume-go">Open plan</button>`;
+    $('#resume-go').addEventListener('click', () => { state.plan = plan; renderPlan(false) });
+  } catch (e) {
+    if (e.status === 404) store.del('ontarget.plan');
+  }
+}
+
+/* ---------- building view ---------- */
+async function buildPlan(company, date) {
+  show('building');
+  const steps = [`Looking up how ${company} interviews`, 'Choosing practice problems from the catalog', `Laying out your days up to ${fmt(parseISO(date), { month: 'long', day: 'numeric' })}`];
+  view.innerHTML = `<section class="building" aria-live="polite">
+    <svg viewBox="0 0 128 128" aria-hidden="true"><g fill="none" stroke="var(--ink)" stroke-width="3">
+      <circle class="ring" style="--k:0" cx="64" cy="64" r="58"/><circle class="ring" style="--k:1" cx="64" cy="64" r="42"/><circle class="ring" style="--k:2" cx="64" cy="64" r="26"/></g>
+      <circle cx="64" cy="64" r="11" fill="var(--gold)"/></svg>
+    <h1>Writing your ${esc(company)} plan</h1>
+    <ul>${steps.map(s => `<li><i></i>${esc(s)}</li>`).join('')}</ul></section>`;
+  const lis = $$('.building li');
+  const timers = lis.map((li, i) => setTimeout(() => li.classList.add('on'), 200 + i * 900));
+  const started = Date.now();
+  try {
+    const plan = await api('/plans', { method: 'POST', body: JSON.stringify({ company, interview_date: date }) });
+    const wait = 1900 - (Date.now() - started);
+    if (wait > 0) await sleep(wait);
+    state.plan = plan; state.codes = {};
+    store.set('ontarget.plan', plan.id);
+    renderPlan(true);
+  } catch (e) {
+    timers.forEach(clearTimeout);
+    renderSetup();
+    showErr(friendly(e));
+  }
+}
+
+/* ---------- plan view ---------- */
+function nextTask(plan) {
+  for (const d of plan.days) { if (d.skipped) continue; for (const t of d.tasks) if (!t.done) return { d, t } }
+  return null;
+}
+
+function renderPlan(animate) {
+  show('plan');
+  const plan = state.plan, iv = parseISO(plan.interview_date);
+  view.innerHTML = `
+  <section class="plan">
+    <div class="plan-head">
+      <div>
+        <h1>${esc(plan.company)}</h1>
+        <p class="when">Interview on <b>${esc(fmt(iv, { weekday: 'long', month: 'long', day: 'numeric' }))}</b></p>
+      </div>
+      <div class="stats">
+        <div class="ring-wrap"><svg viewBox="0 0 72 72"><circle class="trk" cx="36" cy="36" r="30" stroke-width="8"/><circle class="val" id="ring" cx="36" cy="36" r="30" stroke-width="8" stroke-dasharray="188.5" stroke-dashoffset="188.5"/></svg><b id="pct">0%</b></div>
+        <div class="txt"><b id="daysleft"></b><span id="taskcount"></span></div>
+      </div>
+    </div>
+    <div id="source"></div>
+    <div class="runway-wrap" id="runway" aria-label="Your days until the interview"></div>
+    <div class="plan-body">
+      <div id="days"></div>
+      <aside class="rail"><div class="upnext" id="upnext"></div></aside>
+    </div>
+  </section>`;
+  $('#source').innerHTML = plan.source === 'llm'
+    ? `<span class="source">${ICON.sparkle}Written by AI for ${esc(plan.company)}</span>`
+    : `<div class="notice"><span>The AI service didn't answer, so this is the standard plan.</span><button class="btn small" type="button" id="retry">Try the AI again</button></div>`;
+  const retry = $('#retry');
+  if (retry) retry.addEventListener('click', () => buildPlan(plan.company, plan.interview_date));
+
+  $('#days').innerHTML = plan.days.map(d => {
+    const date = parseISO(d.date);
+    return `<section class="day" id="day-${d.number}" data-day="${d.number}">
+      <div class="dayside"><div class="dayno">Day ${d.number}</div><div class="daydate">${esc(fmt(date, { weekday: 'short', month: 'short', day: 'numeric' }))}</div><span class="tag" hidden></span></div>
+      <div>
+        <div class="daytop"><h2>${esc(d.title)}</h2><button class="link" type="button" data-skip>Skip day</button></div>
+        <ul class="tasks">${d.tasks.map(t => `
+          <li class="task" data-task="${esc(t.id)}">
+            <input class="cb" type="checkbox" id="c-${esc(t.id)}">
+            <label class="trow" for="c-${esc(t.id)}"><span class="box"></span><span class="ticon" title="${esc(TYPE_LABEL[t.type] || t.type)}">${ICON[t.type] || ICON.list}</span><span class="ttext">${esc(t.text)}</span></label>
+            ${t.problem_id ? `<button class="open" type="button" data-open="${esc(t.problem_id)}" data-task-id="${esc(t.id)}">Open problem</button>` : ''}
+          </li>`).join('')}</ul>
+      </div></section>`;
+  }).join('');
+
+  $('#days').addEventListener('change', e => { if (e.target.classList.contains('cb')) setTask(e.target.closest('.task').dataset.task, e.target.checked) });
+  $('#days').addEventListener('click', e => {
+    const skip = e.target.closest('[data-skip]');
+    if (skip) { setSkip(+skip.closest('.day').dataset.day); return }
+    const open = e.target.closest('[data-open]');
+    if (open) openProblem(open.dataset.open, open.dataset.taskId);
+  });
+  $('#runway').addEventListener('click', e => { const b = e.target.closest('[data-day]'); if (b) $(`#day-${b.dataset.day}`).scrollIntoView({ behavior: 'smooth', block: 'start' }) });
+  $('#upnext').addEventListener('click', e => {
+    const go = e.target.closest('[data-go]'); if (!go) return;
+    if (go.dataset.open) openProblem(go.dataset.open, go.dataset.go); else setTask(go.dataset.go, true);
+  });
+
+  drawRunway(animate);
+  syncPlan();
+}
+
+function drawRunway(animate) {
+  const plan = state.plan, iv = parseISO(plan.interview_date);
+  $('#runway').innerHTML = runwayHTML(planNodes(plan), fmt(iv, { day: 'numeric' }), true);
+  if (animate) { const r = $('#runway .runway'); r.classList.add('enter'); setTimeout(() => r.classList.remove('enter'), 1900) }
+}
+
+function syncPlan() {
+  const plan = state.plan, p = progressOf(plan), t0 = +startOfToday();
+  plan.days.forEach(d => {
+    const el = $(`#day-${d.number}`); if (!el) return;
+    const st = dayState(d), isToday = +parseISO(d.date) === t0;
+    el.classList.toggle('skipped', d.skipped);
+    el.classList.toggle('today', isToday && !d.skipped);
+    el.classList.toggle('done', st.s === 'done');
+    const tag = $('.tag', el);
+    const label = d.skipped ? ['skip', 'Skipped'] : st.s === 'done' ? ['done', 'Done'] : isToday ? ['today', 'Today'] : null;
+    tag.hidden = !label; if (label) { tag.className = 'tag ' + label[0]; tag.textContent = label[1] }
+    $('[data-skip]', el).textContent = d.skipped ? 'Undo skip' : 'Skip day';
+    d.tasks.forEach(t => { const cb = $(`#c-${CSS.escape(t.id)}`); if (cb) cb.checked = t.done });
+  });
+  const ring = $('#ring'); if (ring) ring.style.strokeDashoffset = String(188.5 * (1 - p.percent / 100));
+  $('#pct').textContent = p.percent + '%';
+  const left = Math.max(0, daysBetween(startOfToday(), parseISO(plan.interview_date)));
+  $('#daysleft').textContent = left === 0 ? 'Interview day' : plural(left, 'day') + ' left';
+  $('#taskcount').textContent = `${p.done} of ${p.total} tasks done`;
+  // update runway nodes in place so the fill animates
+  const nodes = planNodes(plan);
+  $$('#runway .rnode').forEach((el, i) => {
+    el.className = `rnode ${nodes[i].s}${nodes[i].today ? ' today' : ''}`; el.style.setProperty('--p', nodes[i].p);
+  });
+  $$('#runway .rseg').forEach((el, i) => el.classList.toggle('fill', nodes[i].fill));
+  const nx = nextTask(plan), box = $('#upnext');
+  if (nx) {
+    const hasProblem = !!nx.t.problem_id;
+    box.innerHTML = `<h2>Up next</h2><div class="item"><span class="ticon">${ICON[nx.t.type] || ICON.list}</span><div><div>${esc(nx.t.text)}</div><div class="daydate">Day ${nx.d.number}</div></div></div>
+      <button class="btn primary" style="width:100%;padding:12px 18px;font-size:16px" type="button" data-go="${esc(nx.t.id)}" ${hasProblem ? `data-open="${esc(nx.t.problem_id)}"` : ''}>${hasProblem ? 'Open problem' : 'Mark done'}</button>`;
+  } else {
+    box.innerHTML = `<h2>${p.total ? 'Plan complete' : 'Nothing left'}</h2><p class="done-msg">${p.total ? "Every task is done. Get some rest and go get it." : 'All days are skipped. Undo a skip to bring tasks back.'}</p>`;
+  }
+}
+
+async function setTask(id, done) {
+  const task = state.plan.days.flatMap(d => d.tasks).find(t => t.id === id);
+  if (!task) return;
+  const before = task.done; task.done = done; syncPlan();
+  try { state.plan = await api(`/plans/${state.plan.id}/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ done }) }) }
+  catch (e) { task.done = before; toast(friendly(e)) }
+  syncPlan();
+}
+async function setSkip(n) {
+  const day = state.plan.days.find(d => d.number === n);
+  const before = day.skipped; day.skipped = !before; syncPlan();
+  try { state.plan = await api(`/plans/${state.plan.id}/days/${n}`, { method: 'PATCH', body: JSON.stringify({ skipped: !before }) }) }
+  catch (e) { day.skipped = before; toast(friendly(e)) }
+  syncPlan();
+}
+
+/* ---------- workspace ---------- */
+const KEYWORDS = {
+  Python: 'def class return if elif else for while in not and or is None True False import from as pass lambda with try except raise yield break continue global nonlocal assert del',
+  Java: 'class public private protected static final void int long double boolean char new return if else for while break continue import extends implements null true false this try catch throw throws',
+  'C++': 'class public private protected static const void int long double bool char new return if else for while break continue include using namespace nullptr true false this try catch throw auto struct',
+  JavaScript: 'var let const function return if else for while break continue new null undefined true false this class try catch throw typeof of in async await'
+};
+const TYPES = /^(Solution|List|Map|Set|String|Integer|Counter|deque|vector|unordered_map|unordered_set|string|Array|Object)$/;
+function highlight(code, lang) {
+  const kw = new Set(KEYWORDS[lang].split(' '));
+  const com = lang === 'Python' ? '#[^\\n]*' : '\\/\\/[^\\n]*';
+  const re = new RegExp(`(${com})|("(?:\\\\.|[^"\\\\\\n])*"|'(?:\\\\.|[^'\\\\\\n])*')|\\b(\\d+(?:\\.\\d+)?)\\b|\\b([A-Za-z_]\\w*)\\b`, 'g');
+  let out = '', last = 0, m;
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    const [tok, c, s, n, id] = m;
+    if (c) out += `<span class="tk-com">${esc(tok)}</span>`;
+    else if (s) out += `<span class="tk-str">${esc(tok)}</span>`;
+    else if (n) out += `<span class="tk-num">${tok}</span>`;
+    else if (kw.has(id)) out += `<span class="tk-kw">${tok}</span>`;
+    else if (TYPES.test(id)) out += `<span class="tk-ty">${tok}</span>`;
+    else out += esc(tok);
+    last = m.index + tok.length;
+  }
+  return out + esc(code.slice(last)) + '\n';
+}
+
+const SOLUTIONS = {
+'two-sum': `class Solution:
+    def twoSum(self, nums: list[int], target: int) -> list[int]:
+        seen = {}
+        for i, n in enumerate(nums):
+            if target - n in seen:
+                return [seen[target - n], i]
+            seen[n] = i
+`,
+'top-k-words': `from collections import Counter
+import heapq
+
+class Solution:
+    def topKFrequent(self, words: list[str], k: int) -> list[str]:
+        count = Counter(words)
+        heap = [(-c, w) for w, c in count.items()]
+        heapq.heapify(heap)
+        return [heapq.heappop(heap)[1] for _ in range(k)]
+`,
+'merge-intervals': `class Solution:
+    def merge(self, intervals: list[list[int]]) -> list[list[int]]:
+        intervals.sort(key=lambda x: x[0])
+        out = [intervals[0]]
+        for s, e in intervals[1:]:
+            if s <= out[-1][1]:
+                out[-1][1] = max(out[-1][1], e)
+            else:
+                out.append([s, e])
+        return out
+`,
+'num-islands': `class Solution:
+    def numIslands(self, grid: list[list[str]]) -> int:
+        rows, cols = len(grid), len(grid[0])
+
+        def sink(r, c):
+            if r < 0 or c < 0 or r >= rows or c >= cols or grid[r][c] != "1":
+                return
+            grid[r][c] = "0"
+            sink(r + 1, c)
+            sink(r - 1, c)
+            sink(r, c + 1)
+            sink(r, c - 1)
+
+        count = 0
+        for r in range(rows):
+            for c in range(cols):
+                if grid[r][c] == "1":
+                    count += 1
+                    sink(r, c)
+        return count
+`,
+'rotting-oranges': `from collections import deque
+
+class Solution:
+    def orangesRotting(self, grid: list[list[int]]) -> int:
+        rows, cols = len(grid), len(grid[0])
+        q, fresh = deque(), 0
+        for r in range(rows):
+            for c in range(cols):
+                if grid[r][c] == 2:
+                    q.append((r, c))
+                elif grid[r][c] == 1:
+                    fresh += 1
+        minutes = 0
+        while q and fresh:
+            for _ in range(len(q)):
+                r, c = q.popleft()
+                for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 1:
+                        grid[nr][nc] = 2
+                        fresh -= 1
+                        q.append((nr, nc))
+            minutes += 1
+        return minutes if fresh == 0 else -1
+`,
+'meeting-rooms': `import heapq
+
+class Solution:
+    def minMeetingRooms(self, intervals: list[list[int]]) -> int:
+        intervals.sort()
+        ends = []
+        for s, e in intervals:
+            if ends and ends[0] <= s:
+                heapq.heappop(ends)
+            heapq.heappush(ends, e)
+        return len(ends)
+`,
+'trap-water': `class Solution:
+    def trap(self, height: list[int]) -> int:
+        l, r = 0, len(height) - 1
+        lmax = rmax = water = 0
+        while l < r:
+            if height[l] < height[r]:
+                lmax = max(lmax, height[l])
+                water += lmax - height[l]
+                l += 1
+            else:
+                rmax = max(rmax, height[r])
+                water += rmax - height[r]
+                r -= 1
+        return water
+`};
+
+async function openProblem(problemId, taskId) {
+  try {
+    const p = await api(`/problems/${encodeURIComponent(problemId)}`);
+    const day = state.plan.days.find(d => d.tasks.some(t => t.id === taskId));
+    state.work = { problem: p, taskId, crumb: day ? `Day ${day.number}: ${day.title}` : '' };
+    state.lang = 'Python';
+    renderWork();
+  } catch (e) { toast(friendly(e)) }
+}
+
+function renderWork() {
+  show('work');
+  const { problem: p, crumb } = state.work;
+  view.innerHTML = `
+  <section>
+    <div class="workbar"><button class="btn" type="button" id="back">Back to plan</button><span class="crumb">${esc(crumb)}</span></div>
+    <div class="split">
+      <article class="prob">
+        <h1>${esc(p.title)}</h1>
+        <div class="pills"><span class="pill ${esc(p.difficulty)}">${esc(p.difficulty)}</span>${p.topics.map(t => `<span class="pill">${esc(t)}</span>`).join('')}</div>
+        ${p.description.map(d => `<p>${esc(d)}</p>`).join('')}
+        <h3>Examples</h3>
+        ${p.examples.map(e => `<div class="ex"><pre><span>Input</span>   ${esc(e.input)}\n<span>Output</span>  ${esc(e.output)}</pre></div>`).join('')}
+        <h3>Constraints</h3>
+        <ul class="cons">${p.constraints.map(c => `<li>${esc(c)}</li>`).join('')}</ul>
+      </article>
+      <div class="ide">
+        <div class="tb">
+          <label for="lang">Language</label>
+          <select id="lang">${['Python', 'Java', 'C++', 'JavaScript'].map(l => `<option ${l === state.lang ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          <span class="sp"></span>
+          <button type="button" id="sample" ${SOLUTIONS[p.id] ? '' : 'hidden'}>Fill sample</button>
+          <button type="button" id="reset">Reset</button>
+          <button type="button" class="run" id="run">Run</button>
+          <button type="button" class="submit" id="submit">Submit</button>
+        </div>
+        <div class="editor">
+          <pre class="gut" id="gut" aria-hidden="true">1</pre>
+          <div class="codewrap"><pre id="hl" aria-hidden="true"></pre><textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Code editor"></textarea></div>
+        </div>
+        <div class="console" id="console"></div>
+      </div>
+    </div>
+  </section>`;
+  const ta = $('#code');
+  const key = () => `${p.id}:${state.lang}`;
+  const setCode = v => { ta.value = v; paint() };
+  const paint = () => {
+    state.codes[key()] = ta.value;
+    $('#hl').innerHTML = highlight(ta.value, state.lang);
+    const n = ta.value.split('\n').length;
+    $('#gut').textContent = Array.from({ length: n }, (_, i) => i + 1).join('\n');
+    syncScroll();
+  };
+  const syncScroll = () => { $('#hl').scrollTop = ta.scrollTop; $('#hl').scrollLeft = ta.scrollLeft; $('#gut').scrollTop = ta.scrollTop };
+  const consoleIdle = () => { $('#console').innerHTML = `<div class="h"><span>Console</span><span>Demo mode: your code is not executed, results are simulated</span></div><div class="dim">Run your code to check the sample cases.</div>` };
+  setCode(state.codes[key()] ?? p.starter_code[state.lang]);
+  consoleIdle();
+  ta.addEventListener('input', paint);
+  ta.addEventListener('scroll', syncScroll);
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Tab') { e.preventDefault(); ta.setRangeText('    ', ta.selectionStart, ta.selectionEnd, 'end'); paint() }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const s = ta.selectionStart, before = ta.value.slice(0, s), line = before.slice(before.lastIndexOf('\n') + 1);
+      let indent = (line.match(/^\s*/) || [''])[0];
+      if (/[:{]\s*$/.test(line)) indent += '    ';
+      ta.setRangeText('\n' + indent, s, ta.selectionEnd, 'end'); paint();
+    }
+  });
+  $('#lang').addEventListener('change', e => { state.lang = e.target.value; setCode(state.codes[key()] ?? p.starter_code[state.lang]); consoleIdle() });
+  $('#reset').addEventListener('click', () => { setCode(p.starter_code[state.lang]); consoleIdle() });
+  $('#sample').addEventListener('click', () => { state.lang = 'Python'; $('#lang').value = 'Python'; setCode(SOLUTIONS[p.id]); consoleIdle() });
+  $('#back').addEventListener('click', () => renderPlan(false));
+  $('#run').addEventListener('click', async () => {
+    $('#console').innerHTML = `<div class="h"><span>Console</span><span>Running</span></div>`;
+    await sleep(650);
+    $('#console').innerHTML = `<div class="h"><span>Console</span><span>Simulated: ${p.examples.length} of ${p.examples.length} sample cases passed</span></div><div class="rows">${p.examples.map((e, i) => `<div><span class="ok">Case ${i + 1} passed</span> <span class="dim">expected ${esc(e.output)}</span></div>`).join('')}</div>`;
+  });
+  $('#submit').addEventListener('click', async () => {
+    $('#console').innerHTML = `<div class="h"><span>Console</span><span>Submitting</span></div>`;
+    await sleep(900);
+    $('#console').innerHTML = `<div class="h"><span>Result</span><span>Simulated</span></div><div class="accepted">Accepted</div><div class="rows"><div><span class="dim">Test cases</span> 58 of 58 passed</div></div><div style="margin-top:14px"><button class="btn small" type="button" id="done" style="background:transparent;color:var(--ed-ink);border-color:var(--ed-line)">Back to plan</button></div>`;
+    $('#done').addEventListener('click', () => $('#back').click());
+    const task = state.plan.days.flatMap(d => d.tasks).find(t => t.id === state.work.taskId);
+    if (task && !task.done) { task.done = true; try { state.plan = await api(`/plans/${state.plan.id}/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ done: true }) }) } catch (e) { task.done = false; toast(friendly(e)) } }
+  });
+}
+
+/* ---------- boot ---------- */
+$('#home').addEventListener('click', () => { state.plan ? renderPlan(false) : renderSetup() });
+$('#newplan').addEventListener('click', () => { renderSetup() });
+renderSetup();
+</script>
+</body>
+</html>
